@@ -1,0 +1,8 @@
+---
+- include: os_settings.yml
+  tags:
+    - os
+
+- include: keycloak.yml
+  tags:
+    - keycloak

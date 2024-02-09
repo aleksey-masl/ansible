@@ -1,0 +1,7 @@
+---
+- name: deploy keycloak
+  serial: "{{ parallel_run_nodes_count }}"
+  hosts: all
+  roles:
+    - keycloak
+  become: true

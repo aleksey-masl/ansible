@@ -1,0 +1,14 @@
+# Установка
+- Заполнить значения в `ansible-keycloak-18/hosts.ini` (БД).
+- Залить скрипт `ansible-keycloak-18/files/update-script-kc-18.sql.j2` в БД руками. При проливке "на горячую" кк-15 может продолжить работать, но упадет при рестарте на валидации чексумм. Без этих апдейтов кк-18 не стартанет на той же проверке чексумм.
+- Запустить пайп http://jenkins.local.newton-technology.ru/view/Learning%20Pipelines/job/keycloak-18-ansible-deploy-init/build?delay=0sec
+- После успешной установки откатить из Jenkinsfile 
+    - 73 строку (`-t os` - настройка ОС, далее она не нужна)
+    - 10 строку (`alpha-18` - можно откатить, но опционально)
+- Залить миграции, перезапустить сервис кк
+- Чекнуть, что кк работает
+- Погасить кк-15
+- Переключиться на оригинальную БД (не забыть залить миграции и скрипт `ansible-keycloak-18/files/update-script-kc-18.sql.j2`)
+- Переключить балансер через плейбук https://gitlab.local.newton-technology.ru/nt/infrastructure/ansible-nginx/-/blob/master/group_vars/nt.yml#L62
+- Проверить работу ЛК
+- Пайп http://jenkins.local.newton-technology.ru/view/Learning%20Pipelines/job/keycloak-18-ansible-deploy-init/build?delay=0sec можно удалить (опционально)

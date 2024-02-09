@@ -1,0 +1,40 @@
+---
+- name: Set core params
+  sysctl:
+    name: '{{ item.name }}'
+    value: '{{ item.value }}'
+    state: present
+    reload: yes
+  loop: '{{ core_params }}'
+
+- name: Disable services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+    daemon_reload: true
+  loop: "{{ systemd_disables_services }}"
+
+- name: Set a hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Generate /etc/hosts file
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+
+- name: Create group "{{ keycloak_group }}"
+  ansible.builtin.group:
+    name: "{{ keycloak_group }}"
+
+- name: Create "{{ keycloak_user }}" system user
+  user:
+    name: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+    shell: /sbin/nologin
+    system: true
+
+- name: Install system packages
+  apt: pkg={{ item }} update-cache=true
+  loop: "{{ system_packages }}"

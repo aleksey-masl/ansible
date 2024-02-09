@@ -1,0 +1,90 @@
+pipeline {
+    agent {
+        label "ansible"
+    }
+    options {
+        disableConcurrentBuilds()
+    }
+    parameters {
+        string(name: "newton_module_version", defaultValue: "")
+        string(name: "env", defaultValue: "dev-18")
+    }
+    stages {
+        stage ("Update newton module version") {
+            when {
+                expression { params.newton_module_version }
+            }
+            steps {
+                script {
+                    def newtonModuleDataFileName = "ansible-keycloak-18/.jenkins/newton_module_data.json"
+                    def newtonModuleData = readJSON file: newtonModuleDataFileName
+                    newtonModuleData[params.env]["version"] = params.newton_module_version
+                    writeJSON file: newtonModuleDataFileName, json: newtonModuleData
+                    try {
+                        sh "git add ${newtonModuleDataFileName} && git commit -m 'Update newton module version'"
+                    } catch (err) {
+                        echo "Can't commit newton module version"
+                    }
+                    pullFromRemote  ("master", env.DEFAULT_HTTPS_GIT_CREDENTIALS_ID, env.ANSIBLE_REPO_HTTPS_URL)
+                    pushToRemote    ("master", env.DEFAULT_HTTPS_GIT_CREDENTIALS_ID, env.ANSIBLE_REPO_HTTPS_URL)
+                }
+            }
+        }
+        stage ("Download newton-module") {
+            steps {
+                script {
+                    def newtonModuleDataFileName = "ansible-keycloak-18/.jenkins/newton_module_data.json"
+                    def newtonModuleData = readJSON file: newtonModuleDataFileName
+                    def newtonModuleVersion = newtonModuleData[params.env]["version"]
+                    def newtonModuleRepository = newtonModuleData[params.env]["repository"]
+                    pullJavaArtifacts (
+                        "newton-module", 
+                        "${newtonModuleVersion}", 
+                        "ansible-keycloak-18/files/", 
+                        "io.nwtn.keycloak", 
+                        "${newtonModuleRepository}"
+                    )
+                    sh "md5sum ansible-keycloak-18/files/newton-module-${newtonModuleVersion}.jar"
+                }
+            }
+        }
+        stage ("Run playbook") {
+            steps {
+                script {
+                    def newtonModuleDataFileName = "ansible-keycloak-18/.jenkins/newton_module_data.json"
+                    def newtonModuleData = readJSON file: newtonModuleDataFileName
+                    def newtonModuleVersion = newtonModuleData[params.env]["version"]
+                    dir ("ansible-keycloak-18") {
+                        def envPrefix = params.env - "-18"
+                        withCredentials([
+                            usernamePassword(credentialsId: env.DEFAULT_NEXUS_USER_CREDENTIALS_ID,  usernameVariable: 'MAVEN_USERNAME', passwordVariable: 'MAVEN_PASSWORD'),
+                            usernamePassword(credentialsId: "${envPrefix}-keycloak-db-credentials", usernameVariable: 'PGSQL_USERNAME', passwordVariable: 'PGSQL_PASSWORD'),
+                            usernamePassword(credentialsId: "keycloak-cluster-sudo-credentials", usernameVariable: 'SUDO_USERNAME', passwordVariable: 'SUDO_PASSWORD'),
+                            usernamePassword(credentialsId: "keycloak_dev_spirealmrestapiextensionroles_credentials", usernameVariable: 'REST_API_USERNAME', passwordVariable: 'REST_API_PASSWORD')
+                        ]) { 
+                            ansiblePlaybook ( 
+                                become: true,
+                                becomeUser: 'root', 
+                                credentialsId: 'keycloak-cluster-ssh-credentials', 
+                                disableHostKeyChecking: true, 
+                                installation: 'default-ansible', 
+                                inventory: "hosts.ini", 
+                                playbook: 'keycloak.yml', 
+                                extras: "-t keycloak " + 
+                                        "-l ${params.env} " +
+                                        "--extra-vars parallel_run_nodes_count=1 " +
+                                        "--extra-vars ansible_become_password=$SUDO_PASSWORD " +
+                                        "--extra-vars maven_username=$MAVEN_USERNAME " +
+                                        "--extra-vars maven_password=$MAVEN_PASSWORD " +
+                                        "--extra-vars postgresql_usernamename=$PGSQL_USERNAME " +
+                                        "--extra-vars postgresql_password=$PGSQL_PASSWORD " +
+                                        "--extra-vars keycloak_newton_module_version=${newtonModuleVersion} " +
+                                        "--extra-vars keycloak_spiRealmRestapiExtensionRolesPassword=$REST_API_PASSWORD "
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

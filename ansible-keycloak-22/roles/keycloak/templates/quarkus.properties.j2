@@ -1,0 +1,33 @@
+quarkus.log.file.rotation.max-file-size=100M
+quarkus.log.file.rotation.max-backup-index=100
+quarkus.log.file.rotation.rotate-on-boot=false
+quarkus.log.file.rotation.file-suffix=.yyyy-MM-dd
+
+quarkus.http.access-log.enabled=true
+quarkus.http.access-log.log-to-file=true
+quarkus.http.access-log.base-file-name=access.
+quarkus.http.access-log.log-suffix=log
+quarkus.http.access-log.log-directory=/opt/keycloak/log/
+quarkus.http.access-log.rotate=true
+#quarkus.http.access-log.pattern=%t [%{i,X-Forwarded-For}, %h] %l (user:%u) - '%r' => %s (%b bytes) '%{i,User-Agent}' (Referer: '%{i,Referer}') - [%I, %Dms]
+quarkus.http.record-request-start-time=true
+
+quarkus.datasource.jdbc.background-validation-interval=60000
+quarkus.datasource.jdbc.validation-query-sql=SELECT 1
+
+# количество тредов в пулле, прежде чем сервер начнет их закрывать 
+# (в среднем кк обрабатывает 200 коннектов в секунду)
+# 1000 => 5 сек таймаут
+# https://www.keycloak.org/keycloak-benchmark/kubernetes-guide/latest/running/concepts/threads#load-shedding
+quarkus.thread-pool.queue-size=1000
+quarkus.transaction-manager.enable-recovery=true
+
+#####################################################
+##       Не использовать! Ломается админка         ##
+#                                                   #
+quarkus.http.proxy.proxy-address-forwarding=true  #
+quarkus.http.proxy.enable-forwarded-prefix=true   #
+quarkus.http.proxy.enable-forwarded-host=true     #
+quarkus.http.proxy.allow-forwarded=true           #
+#                                                   #
+#####################################################

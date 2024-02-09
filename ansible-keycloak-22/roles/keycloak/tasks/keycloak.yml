@@ -1,0 +1,101 @@
+---
+- name: Keycloak stop
+  systemd:
+    name: keycloak.service
+    state: stopped
+    daemon_reload: True
+    enabled: True
+  ignore_errors: True
+
+- name: Create dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+  with_items:
+    - "{{ distr_home }}"
+    - "{{ keycloak_home }}-{{ keycloak_version }}"
+
+- name: Download keycloak-{{ keycloak_version }}.tar.gz
+  get_url:
+    url: "https://github.com/keycloak/keycloak/releases/download/{{ keycloak_version }}/keycloak-{{ keycloak_version }}.tar.gz"
+    dest: "{{ distr_home }}/keycloak-{{ keycloak_version }}.tar.gz"
+    timeout: 600
+    checksum: "{{ keycloak_md5_sum_keycloak_tarball }}"
+
+- name: Extract keycloak-{{ keycloak_version }}.tar.gz
+  unarchive:
+    src: "{{ distr_home }}/keycloak-{{ keycloak_version }}.tar.gz"
+    dest: "{{ keycloak_home }}-{{ keycloak_version }}/"
+    extra_opts: ['--strip-components=1', '--show-stored-names']
+    creates: "{{ keycloak_home }}-{{ keycloak_version }}/version.txt"
+    owner: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+    remote_src: yes
+
+- name: Create a symbolic link
+  file:
+    src: "{{ keycloak_home }}-{{ keycloak_version }}/"
+    dest:  "{{ keycloak_home }}"
+    owner: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+    state: link
+
+- name: Delete directories
+  file:
+    state: absent
+    path: "{{ keycloak_home }}/{{ item }}"
+  loop: "{{ keycloak_force_update_directories }}"
+
+- name: Create direcories
+  file:
+    path: "{{ keycloak_home }}/{{ item }}/"
+    owner: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+    state: directory
+  loop: "{{ keycloak_force_update_directories }}"
+
+- name: Copy configs
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+  loop:
+    - {src: keycloak.conf.j2, dest: "{{ keycloak_home }}/conf/keycloak.conf"}
+    - {src: tcpping-cache-ispn.xml.j2, dest: "{{ keycloak_home }}/conf/tcpping-cache-ispn.xml"}
+    - {src: quarkus.properties.j2, dest: "{{ keycloak_home }}/conf/quarkus.properties"}
+
+- name: Copy providers
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+  loop:
+    - { src: "newton-module-{{ keycloak_newton_module_version }}.jar", dest: "{{ keycloak_home }}/providers/newton-module-{{ keycloak_newton_module_version }}.jar" }
+    - { src: "keycloak-metrics-spi-4.0.0.jar", dest: "{{ keycloak_home }}/providers/keycloak-metrics-spi-4.0.0.jar" }
+
+- name: Copy keycloak.service config
+  template:
+    src: keycloak.service.j2
+    dest: /etc/systemd/system/keycloak.service
+
+- name: Keycloak start
+  systemd:
+    name: keycloak.service
+    state: started
+    daemon_reload: True
+    enabled: True
+
+- name: Wait for Keycloak node to start
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host }}:8080/auth/health"
+    return_content: True
+  register: response
+  until: response.status == 200 and (response.content|from_json).status == "UP"
+  retries: 12
+  delay: 5
+  # when: keycloak_health_check_enabled and migration_strategy == "update"
+  ignore_errors: True

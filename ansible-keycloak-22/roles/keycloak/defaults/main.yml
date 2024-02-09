@@ -1,0 +1,123 @@
+---
+core_params:
+  - name: 'net.ipv4.tcp_congestion_control'
+    value: 'bbr'
+  - name: 'net.core.default_qdisc'
+    value: 'fq'
+  - name: 'fs.file-max'
+    value: '41943031'
+  - name: 'net.core.rmem_max'
+    value: '26214400'
+  - name: 'net.ipv4.tcp_mem'
+    value: '26214400 26214400 26214400'
+  - name: 'net.ipv4.tcp_tw_reuse'
+    value: '1'
+  - name: 'net.core.somaxconn'
+    value: '65535'
+  - name: 'net.core.netdev_max_backlog'
+    value: '250000'
+  - name: 'net.ipv4.tcp_wmem'
+    value: '4096 87380 26214400'
+  - name: 'net.ipv4.tcp_keepalive_intvl'
+    value: '15'
+  - name: 'net.ipv4.tcp_keepalive_probes'
+    value: '5'
+  - name: 'net.ipv4.tcp_keepalive_time'
+    value: '120'
+  - name: 'net.ipv4.tcp_fin_timeout'
+    value: '5'
+  - name: 'net.ipv4.tcp_synack_retries'
+    value: '2'
+  - name: 'net.ipv4.tcp_syn_retries'
+    value: '2'
+  - name: 'vm.max_map_count'
+    value: '1048576'
+  - name: 'vm.swappiness'
+    value: '1'
+
+system_packages:
+  - openjdk-17-jdk
+  - vim
+  - mc
+  - less
+  - curl
+  - wget
+  - unzip
+  - telnet
+  - htop
+  - nano
+  - rsync
+  - net-tools
+  - bash-completion
+  - sed
+  - jq
+  - sysstat
+  - iotop
+  - iftop
+  - screen
+  - tcpdump
+  - openssl
+  - haveged
+  - rng-tools5
+
+systemd_disables_services:
+  - cloud-config.service
+  - cloud-final.service
+  - cloud-init-local.service
+  - cloud-init.service
+  - unattended-upgrades.service
+
+distr_home: /distr
+
+nginx:
+  user: nginx
+  group: nginx
+  files:
+    config:
+      src: ./files/nginx.conf.j2
+      dest: /etc/nginx/nginx.conf
+    cert:
+      src: ./files/certs/keycloak.crt
+      dest: /etc/nginx/ssl/keycloak.crt
+    key:
+      src: ./files/certs/keycloak.key
+      dest: /etc/nginx/ssl/keycloak.key
+
+keycloak_force_update_directories:
+- providers
+- conf
+
+keycloak_home: /opt/keycloak
+
+keycloak_user: keycloak_local
+keycloak_group: keycloak
+
+keycloak_phoneCodeExpiresInSeconds: "300"
+keycloak_emailCodeExpiresInSeconds: "300"
+keycloak_phoneCodeCanBeResubmittedInSeconds: "60"
+keycloak_emailCodeCanBeResubmittedInSeconds: "60"
+keycloak_phoneMaxAttemptsPerHour: "1000"
+keycloak_emailMaxAttemptsPerHour: "10"
+keycloak_codeDigitsNumber: "6"
+keycloak_demoPhoneEnabled: "true"
+keycloak_demoPhoneCode: "000000"
+keycloak_tokenExpiresInSeconds: "60"
+
+keycloak_deleteExpiredTokensIntervalMillis: "60000"
+keycloak_maxAttemptsOTPCheck: "6"
+
+keycloak_nodes_count: "{{ groups[group_names[0]]|length }}"
+migration_strategy: "update"
+keycloak_health_check_enabled: true
+keycloak_shortFlowPhones: "+70000000000"
+
+min_pool_size: 50
+initial_pool_size: 50
+max_pool_size: 250
+
+keycloak_TokenEndpointLogger_enabled: false
+java_memory_limit_min: 10240
+java_memory_limit_max: 10240
+parallel_run_nodes_count: 1
+
+keycloak_md5_sum_keycloak_tarball: "md5:33a1f742010b72f8bf05604dba33168c"

@@ -1,0 +1,23 @@
+[env]
+keycloak-node-1 full_name=<internal-dn-1> ansible_host=<ip1>
+keycloak-node-2 full_name=<internal-dn-2> ansible_host=<ip2>
+
+[env:vars]
+keycloak_hostname = <внешний домен>
+keycloak_admin_hostname = <домен админки (может совпадать  с внешним)>
+postgresql_connect = "jdbc:postgresql://<dn>:<port>/<dbname>"
+postgresql_username = "postgresql_username"
+postgresql_password = "postgresql_password"
+bootstrap_servers = "<kafka-servers>"
+notification_topic = "notification"
+keycloak_basepath = "keycloak_basepath"
+keycloak_audience = "keycloak_audience"
+parallel_run_nodes_count = 1 
+# Политика миграций в БД.
+migration_strategy = "manual" # "update" 
+keycloak_spiRealmRestapiExtensionRolesUsername = "rest-api-user"
+keycloak_spiRealmRestapiExtensionRolesPassword = "<rest-api-password>"
+keycloak_newton_module_version = 3.0.0-SNAPSHOT
+
+keycloak_version = 18.0.2
+keycloak_md5_sum_keycloak_tarball = "md5:15f54d9407e072439f01bb7ee0713235"

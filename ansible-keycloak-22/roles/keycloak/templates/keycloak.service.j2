@@ -1,0 +1,29 @@
+[Unit]
+Description=Keycloak IdP server
+After=syslog.target network.target
+Before=nginx.service
+
+[Service]
+# # SIGTERM signal is used to stop the Java process
+# KillSignal=SIGTERM
+# # Send the signal only to the JVM rather than its control group
+# KillMode=process
+# # Java process is never killed
+# SendSIGKILL=no
+# # When a JVM receives a SIGTERM signal it exits with code 143
+Type=simple
+SuccessExitStatus=143 0
+User={{ keycloak_user }}
+Group={{ keycloak_group }}
+LimitNOFILE=102642
+PIDFile=/run/keycloak/keycloak.pid
+Environment=JAVA_OPTS="-Xms{{ java_memory_limit_min }}m -Xmx{{ java_memory_limit_max }}m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Djgroups.thread_dumps_threshold=1"
+ExecStartPre={{ keycloak_home }}/bin/kc.sh build
+ExecStart={{ keycloak_home }}/bin/kc.sh start --hostname-strict=false --optimized
+Restart=always
+
+TimeoutStartSec=120
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
